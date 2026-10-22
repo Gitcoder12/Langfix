@@ -1,0 +1,18 @@
+[project]
+name = "langfix"
+version = "1.0.0"
+description = "An autocorrector, security linter, and performance scorer for polyglot programming."
+authors = [{ name = "DHARAVATH SATVIK" }]
+requires-python = ">=3.8"
+dependencies = [
+    "rich>=13.0.0",
+    "radon>=6.0.0",
+    "black>=23.0.0",
+]
+
+[project.scripts]
+langfix = "langfix:main"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
