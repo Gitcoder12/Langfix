@@ -13,16 +13,33 @@ from rich.panel import Panel
 from radon.complexity import cc_visit
 
 console = Console()
-
-# Default Configuration (No extra files needed)
-IGNORE_DIRS = [".git", "venv", "__pycache__", "node_modules", ".github"]
-IGNORE_FILES = ["langfix.py", "test_langfix.py"]
-MAX_COMPLEXITY = 10
 CACHE_FILE = ".langfix_cache.json"
 
-# ==========================================
-# 1. SECURITY SCANNER
-# ==========================================
+def load_cache() -> Dict[str, str]:
+    if os.path.exists(CACHE_FILE):
+        try:
+            with open(CACHE_FILE, "r") as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+def save_cache(cache: Dict[str, str]):
+    try:
+        with open(CACHE_FILE, "w") as f:
+            json.dump(cache, f)
+    except Exception:
+        pass
+
+def get_file_hash(file_path: str) -> str:
+    hasher = hashlib.md5()
+    try:
+        with open(file_path, "rb") as f:
+            hasher.update(f.read())
+        return hasher.hexdigest()
+    except Exception:
+        return "error"
+
 def security_scan(code_content: str, ext: str) -> List[str]:
     issues = []
     if re.search(r'(?i)(password|api_key|secret|token|passwd)\s*=\s*["\'][a-zA-Z0-9_\-]+["\']', code_content):
@@ -40,9 +57,6 @@ def security_scan(code_content: str, ext: str) -> List[str]:
             issues.append("PHP shell execution risk")
     return issues
 
-# ==========================================
-# 2. SYNTAX & COMPLEXITY
-# ==========================================
 def check_syntax(file_path: str, ext: str) -> str:
     try:
         if ext == '.py':
@@ -71,15 +85,12 @@ def check_complexity(code_content: str, ext: str) -> List[str]:
     if ext == '.py':
         try:
             for block in cc_visit(code_content):
-                if block.complexity > MAX_COMPLEXITY:
+                if block.complexity > 10:
                     notes.append(f"'{block.name}' too complex ({block.complexity})")
         except Exception:
             pass
     return notes
 
-# ==========================================
-# 3. DOCUMENTATION CHECKER
-# ==========================================
 def check_documentation(code_content: str, ext: str) -> Tuple[int, List[str]]:
     doc_score = 100
     notes = []
@@ -97,22 +108,8 @@ def check_documentation(code_content: str, ext: str) -> Tuple[int, List[str]]:
                 notes.append(f"{missing_docs}/{total_defs} missing docstrings")
         except Exception:
             pass
-    elif ext in ['.js', '.ts', '.go', '.rs', '.java', '.c', '.cpp', '.rb', '.php']:
-        lines = code_content.split('\n')
-        missing_comments, total_funcs = 0, 0
-        for i, line in enumerate(lines):
-            if re.search(r'^\s*(def|class|function|pub fn|fn|public|private|protected|void|int|char|float)\s+\w+', line):
-                total_funcs += 1
-                if i > 0 and not re.search(r'^\s*(//|/\*|\*|#|--)', lines[i-1]):
-                    missing_comments += 1
-        if total_funcs > 0 and missing_comments > 0:
-            doc_score = max(0, 100 - int((missing_comments / total_funcs) * 100))
-            notes.append(f"{missing_comments}/{total_funcs} funcs lack comments")
     return doc_score, notes
 
-# ==========================================
-# 4. AUTO-FIX ENGINE
-# ==========================================
 def auto_fix(file_path: str, ext: str) -> str:
     try:
         if ext == '.py':
@@ -128,9 +125,6 @@ def auto_fix(file_path: str, ext: str) -> str:
     except Exception:
         return "Auto-fix failed"
 
-# ==========================================
-# 5. ORCHESTRATOR
-# ==========================================
 def analyze_file(file_path: str) -> Dict[str, Any]:
     ext = os.path.splitext(file_path)[1]
     supported = ['.py', '.js', '.ts', '.php', '.rb', '.go', '.rs', '.c', '.cpp', '.java']
@@ -146,15 +140,15 @@ def analyze_file(file_path: str) -> Dict[str, Any]:
 
     syntax_status = check_syntax(file_path, ext)
     if syntax_status != "OK" and "SKIPPED" not in syntax_status:
-        return {"file": file_path, "score": 0, "vibe": "COOKED", "note": f"Syntax Error: {syntax_status}"}
+        return {"file": file_path, "score": 0, "vibe": "FAIL", "note": f"Syntax Error: {syntax_status}"}
 
     sec_issues = security_scan(code_content, ext)
     if sec_issues:
-        return {"file": file_path, "score": 10, "vibe": "COOKED", "note": f"Security Risk: {', '.join(sec_issues)}"}
+        return {"file": file_path, "score": 10, "vibe": "FAIL", "note": f"Security Risk: {', '.join(sec_issues)}"}
 
     comp_issues = check_complexity(code_content, ext)
     if comp_issues:
-        return {"file": file_path, "score": 30, "vibe": "COOKED", "note": f"Performance Risk: {', '.join(comp_issues)}"}
+        return {"file": file_path, "score": 30, "vibe": "FAIL", "note": f"Performance Risk: {', '.join(comp_issues)}"}
 
     doc_score, doc_notes = check_documentation(code_content, ext)
     
@@ -169,34 +163,43 @@ def analyze_file(file_path: str) -> Dict[str, Any]:
             pass
 
     final_score = int((format_score + doc_score) / 2)
-    vibe = "AWESOME" if final_score == 100 else "GOOD" if final_score >= 70 else "COOKED"
+    vibe = "AWESOME" if final_score == 100 else "GOOD" if final_score >= 70 else "POOR" if final_score >= 40 else "FAIL"
     note = "Perfect code." if final_score == 100 else f"Issues: {', '.join(doc_notes)}"
 
     return {"file": file_path, "score": final_score, "vibe": vibe, "note": note}
 
-# ==========================================
-# 6. MAIN CLI (Threading & Cache)
-# ==========================================
+def generate_sarif(results: List[Dict[str, Any]]) -> Dict[str, Any]:
+    sarif_results = []
+    for res in results:
+        if res["score"] < 50:
+            sarif_results.append({
+                "ruleId": "LANGFIX-ISSUE",
+                "level": "error",
+                "message": {"text": f"LangFix Score: {res['score']}/100. {res['note']}"},
+                "locations": [{"physicalLocation": {"artifactLocation": {"uri": res["file"].replace("\\", "/")}}}]
+            })
+            
+    return {
+        "version": "2.1.0",
+        "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+        "runs": [{
+            "tool": {"driver": {"name": "LangFix", "version": "1.3.0", "informationUri": "https://github.com/Gitcoder12/Langfix"}},
+            "results": sarif_results
+        }]
+    }
+
 def process_single_file(filepath: str, fix: bool) -> Dict[str, Any]:
     ext = os.path.splitext(filepath)[1]
     if fix:
         auto_fix(filepath, ext)
     return analyze_file(filepath)
 
-def get_file_hash(file_path: str) -> str:
-    hasher = hashlib.md5()
-    try:
-        with open(file_path, "rb") as f:
-            hasher.update(f.read())
-        return hasher.hexdigest()
-    except Exception:
-        return "error"
-
 def main():
     parser = argparse.ArgumentParser(description="LangFix - Polyglot Static Analysis Engine")
     parser.add_argument("directory", help="Directory to analyze")
     parser.add_argument("--fix", action="store_true", help="Auto-fix formatting issues")
     parser.add_argument("--json", action="store_true", help="Output results as JSON")
+    parser.add_argument("--sarif", action="store_true", help="Output SARIF for GitHub Security")
     parser.add_argument("--workers", type=int, default=4, help="Number of concurrent threads")
     args = parser.parse_args()
 
@@ -205,25 +208,20 @@ def main():
         console.print(f"[bold red]Error:[/bold red] '{target_dir}' is not a directory.")
         sys.exit(1)
 
-    if not args.json:
-        console.print(f"\n[bold cyan]🔍 LangFix v1.2.0 | Analyzing {target_dir} (Threads: {args.workers})...[/bold cyan]\n")
+    if not args.json and not args.sarif:
+        console.print(f"\n[bold cyan]🔍 LangFix v1.3.0 | Analyzing {target_dir} (Threads: {args.workers})...[/bold cyan]\n")
 
-    # Load Cache
-    cache = {}
-    if os.path.exists(CACHE_FILE) and not args.fix:
-        try:
-            with open(CACHE_FILE, "r") as f:
-                cache = json.load(f)
-        except Exception:
-            pass
-
+    cache = load_cache() if not args.fix else {}
     new_cache = {}
     files_to_scan = []
+    
+    ignore_dirs = [".git", "venv", "__pycache__", "node_modules", ".github"]
+    ignore_files = ["langfix.py", "test_langfix.py"]
 
     for root, dirs, files in os.walk(target_dir):
-        dirs[:] = [d for d in dirs if d not in IGNORE_DIRS]
+        dirs[:] = [d for d in dirs if d not in ignore_dirs]
         for file in files:
-            if file in IGNORE_FILES: continue
+            if file in ignore_files: continue
             filepath = os.path.join(root, file)
             ext = os.path.splitext(file)[1]
             
@@ -231,9 +229,8 @@ def main():
                 file_hash = get_file_hash(filepath)
                 new_cache[filepath] = file_hash
                 
-                # Skip if cached
-                if filepath in cache and cache[filepath] == file_hash:
-                    if not args.json:
+                if filepath in cache and cache[filepath] == file_hash and not args.fix:
+                    if not args.json and not args.sarif:
                         console.print(f"[dim]⏩ Skipping {filepath} (Cached)[/dim]")
                     continue
                 files_to_scan.append(filepath)
@@ -245,31 +242,32 @@ def main():
             results.append(future.result())
 
     total_score = sum(r["score"] for r in results)
-    if not args.json:
-        for result in results:
-            color = "green" if result["vibe"] == "AWESOME" else "red" if result["vibe"] == "COOKED" else "blue"
-            icon = "🏆" if result["vibe"] == "AWESOME" else "❌" if result["vibe"] == "COOKED" else "👍"
-            console.print(f"[bold]{result['file']}[/bold]")
-            console.print(f"  - Score: [{color}]{result['score']}/100 ({result['vibe']})[/{color}] {icon}")
-            console.print(f"  - Note: {result['note']}\n")
-
     file_count = len(results)
     avg_score = (total_score // file_count) if file_count > 0 else 0
-    project_vibe = "COOKED" if avg_score < 70 else ("AWESOME" if avg_score == 100 else "GOOD")
+    project_vibe = "FAIL" if avg_score < 40 else "POOR" if avg_score < 70 else "GOOD" if avg_score < 100 else "AWESOME"
 
-    if args.json:
+    if args.sarif:
+        sarif_data = generate_sarif(results)
+        with open("langfix.sarif", "w") as f:
+            json.dump(sarif_data, f, indent=2)
+        if not args.json:
+            console.print("[bold green]✅ SARIF report saved to langfix.sarif[/bold green]")
+            
+    elif args.json:
         print(json.dumps({"average_score": avg_score, "vibe": project_vibe, "files": results}, indent=2))
+        
     elif file_count > 0:
-        project_color = "red" if avg_score < 70 else ("green" if avg_score == 100 else "blue")
+        for result in results:
+            color = "green" if result["vibe"] == "AWESOME" else "red" if result["vibe"] == "FAIL" else "blue" if result["vibe"] == "GOOD" else "yellow"
+            console.print(f"[bold]{result['file']}[/bold]")
+            console.print(f"  - Score: [{color}]{result['score']}/100 ({result['vibe']})[/{color}]")
+            console.print(f"  - Note: {result['note']}\n")
+
+        project_color = "red" if avg_score < 40 else "yellow" if avg_score < 70 else "blue" if avg_score < 100 else "green"
         panel = Panel(f"Project Average: [{project_color}]{avg_score}/100 ({project_vibe})[/{project_color}]", title="🏁 Final Vibe Check", expand=False)
         console.print(panel)
-    
-    # Save Cache
-    try:
-        with open(CACHE_FILE, "w") as f:
-            json.dump(new_cache, f)
-    except Exception:
-        pass
+
+    save_cache(new_cache)
 
 if __name__ == "__main__":
     main()
