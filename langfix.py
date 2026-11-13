@@ -209,7 +209,7 @@ def main():
         sys.exit(1)
 
     if not args.json and not args.sarif:
-        console.print(f"\n[bold cyan]🔍 LangFix v1.3.0 | Analyzing {target_dir} (Threads: {args.workers})...[/bold cyan]\n")
+        console.print(f"\n[bold cyan] LangFix v1.3.0 | Analyzing {target_dir} (Threads: {args.workers})...[/bold cyan]\n")
 
     cache = load_cache() if not args.fix else {}
     new_cache = {}
@@ -231,7 +231,7 @@ def main():
                 
                 if filepath in cache and cache[filepath] == file_hash and not args.fix:
                     if not args.json and not args.sarif:
-                        console.print(f"[dim]⏩ Skipping {filepath} (Cached)[/dim]")
+                        console.print(f"[dim] Skipping {filepath} (Cached)[/dim]")
                     continue
                 files_to_scan.append(filepath)
 
@@ -251,7 +251,7 @@ def main():
         with open("langfix.sarif", "w") as f:
             json.dump(sarif_data, f, indent=2)
         if not args.json:
-            console.print("[bold green]✅ SARIF report saved to langfix.sarif[/bold green]")
+            console.print("[bold green] SARIF report saved to langfix.sarif[/bold green]")
             
     elif args.json:
         print(json.dumps({"average_score": avg_score, "vibe": project_vibe, "files": results}, indent=2))
@@ -264,7 +264,7 @@ def main():
             console.print(f"  - Note: {result['note']}\n")
 
         project_color = "red" if avg_score < 40 else "yellow" if avg_score < 70 else "blue" if avg_score < 100 else "green"
-        panel = Panel(f"Project Average: [{project_color}]{avg_score}/100 ({project_vibe})[/{project_color}]", title="🏁 Final Vibe Check", expand=False)
+        panel = Panel(f"Project Average: [{project_color}]{avg_score}/100 ({project_vibe})[/{project_color}]", title=" Final Vibe Check", expand=False)
         console.print(panel)
 
     save_cache(new_cache)
