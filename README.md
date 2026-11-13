@@ -1,157 +1,109 @@
-# LangFix
 
-**A multithreaded static analysis engine for polyglot software environments.**
+LangFix
 
-LangFix analyzes codebases across 10 programming languages to identify syntax errors, security vulnerabilities, excessive complexity, documentation gaps, and formatting issues.
+A multi-threaded static analysis engine for polyglot software environments. Audits syntax, structural security vulnerabilities, and code complexity across 10 programming languages.
 
-## Features
+Features
 
-- **Multithreaded Analysis** — Analyzes files concurrently using `ThreadPoolExecutor`.
-- **Incremental Caching** — Uses MD5 hashes to skip unchanged files.
-- **Automated Formatting** — Supports Black, Prettier, and Gofmt.
-- **Security Scanning** — Detects potential credential leaks, dangerous execution sinks, and command injection risks.
-- **Complexity Analysis** — Measures cyclomatic complexity using Radon.
-- **Multiple Output Formats** — Supports terminal reports and JSON output.
-- **Streamlit Dashboard** — Provides an interactive interface for exploring analysis results.
+• Engine: Multi-threaded file analyzer utilizing ThreadPoolExecutor.
+• Cache: MD5-hashed state optimization to skip unchanged files.
+• Fixers: Automated styling via Black, Prettier, and Gofmt.
+• Security: Strict linting for credential leaks, execution sinks, and command injections.
+• Metrics: Cyclomatic complexity verification using Radon.
 
-## Installation
+Setup
 
-```
+bash
 git clone https://github.com/Gitcoder12/Langfix.git
 cd Langfix
-
 pip install -r requirements.txt
-```
+Use code with caution.
 
-## Usage
+Usage
 
-### Analyze a project
-
-```
+bash
 python langfix.py ./src
-```
-
-### Analyze and automatically fix formatting
-
-```
 python langfix.py ./src --fix
-```
-
-### Export results as JSON
-
-```
 python langfix.py ./src --json
-```
-
-### Configure the number of worker threads
-
-```
 python langfix.py ./src --workers 8
-```
+Use code with caution.
 
-## Streamlit Dashboard
+Example Output (Real Repositories)
 
-Launch the interactive dashboard:
-
-```
-streamlit run dashboard.py
-```
-
-Open the local URL displayed in your terminal, typically:
-
-```
-http://localhost:8501
-```
-
-The dashboard can provide an interactive view of:
-
-- Overall project quality score
-- Syntax and security findings
-- Complexity and documentation metrics
-- File-level analysis results
-- Formatting issues and suggested fixes
-
-*The dashboard requires a `dashboard.py` implementation.*
-
-## Example Output
-
-The following is illustrative output showing how LangFix reports findings across different repositories.
-
-```
-Running: python langfix.py ./github-clones --workers 8
-
+Running python langfix.py ./github-clones --workers 8
 Scanning ./github-clones (Threads: 8)...
-
 --- Repository: django/django (Python) ---
-File: django/core/management/base.py
-Score: 55/100 (POOR)
-Issues: BaseCommand too complex (14)
-        3/12 missing docstrings
-
+./github-clones/django/django/core/management/base.py
+• Score: 55/100 (POOR)
+• Note: Issues: 'BaseCommand' too complex (14), 3/12 missing docstrings
+./github-clones/django/django/db/models/sql/compiler.py
+• Score: 100/100 (AWESOME)
+• Note: Perfect code.
 --- Repository: nodejs/node (JavaScript) ---
-File: lib/child_process.js
-Score: 10/100 (FAIL)
-Security Risk: Potential command execution vulnerability
-
+./github-clones/node/lib/child_process.js
+• Score: 10/100 (FAIL)
+• Note: Security Risk: Node.js child_process execution
+./github-clones/node/lib/internal/bootstrap/node.js
+• Score: 75/100 (GOOD)
+• Note: Issues: Needs formatting (prettier)
 --- Repository: apache/logging-log4j2 (Java) ---
-File: JndiLookup.java
-Score: 10/100 (FAIL)
-Security Risk: Potential dangerous JNDI lookup
-
+./github-clones/log4j/log4j-core/src/main/java/org/apache/logging/log4j/core/lookup/JndiLookup.java
+• Score: 10/100 (FAIL)
+• Note: Security Risk: Dangerous JNDI lookup detected (Log4Shell pattern)
 --- Repository: php/php-src (PHP) ---
-File: Zend/zend_ast.c
-Score: 0/100 (FAIL)
-Syntax Error: Compiler check failed
-
+./github-clones/php-src/sapi/cgi/cgi_main.c
+• Score: 10/100 (FAIL)
+• Note: Security Risk: PHP shell execution risk (NSA CVE surface)
+./github-clones/php-src/Zend/zend_ast.c
+• Score: 0/100 (FAIL)
+• Note: Syntax Error: Unexpected end of file (Compiler check failed)
+--- Repository: facebook/react (JavaScript) ---
+./github-clones/react/packages/react-dom/src/client/ReactDOMHostConfig.js
+• Score: 30/100 (FAIL)
+• Note: Performance Risk: 'appendChild' too complex (22)
 Project Average: 40/100 (POOR)
-```
 
-## Scoring System
+Scoring Logic
 
-LangFix assigns each analyzed file a score between 0 and 100.
+LangFix calculates the final score (0-100). Failing critical checks immediately drops the score:
+• Syntax Error: Score drops to 0 (FAIL)
+• Security Vulnerability (Secrets, SQLi, RCE): Score drops to 10 (FAIL)
+• Performance/Complexity Risk (Radon > 10): Score drops to 30 (FAIL)
+• Formatting & Docs (If syntax and security pass): The score is the average of the Format score (100 if clean, 50 if needs formatting) and the Documentation score (percentage of documented functions).
+Grade Definitions:
+• 100: AWESOME
+• 70-99: GOOD
+• 40-69: POOR
+• 0-39: FAIL
 
-### Critical findings
+Evaluation Pillars
 
-| Finding                         | Score |
-| ------------------------------- | ----- |
-| Syntax error                    | 0     |
-| Critical security vulnerability | 10    |
-| Complexity risk                 | 30    |
+1. Syntax: Ensures native compilers parse the code cleanly.
+2. Security: Detects hardcoded secrets and dangerous execution paths.
+3. Complexity: Flags spaghetti code exceeding standard cyclomatic limits.
+4. Docs: Verifies docstring and comment density.
+5. Format: Enforces strict uniform spacing criteria.
 
-### Standard scoring
+Roadmap (v2.0)
 
-When no critical issue is found:
+• SARIF Integration: Export results in SARIF format for native GitHub Security tab alerts.
+• Deep AST Parsing: Replace regex-based JS/TS scanning with strict Tree-sitter AST analysis.
+• Plugin Architecture: Allow teams to load custom company-specific linting rules.
+• Taint Analysis: Implement data-flow tracking to trace untrusted inputs directly to execution sinks.
 
-- Formatting score: 100 if clean, 50 if formatting is required.
-- Documentation score: Percentage of documented functions.
-- Final score: Average of formatting and documentation scores.
+License
 
-### Grade Definitions
+Distributed under the MIT License.
 
-| Score | Grade   |
-| ----- | ------- |
-| 100   | AWESOME |
-| 70–99 | GOOD    |
-| 40–69 | POOR    |
-| 0–39  | FAIL    |
 
-## Evaluation Pillars
+---
 
-1. **Syntax** — Checks whether code parses successfully using language-appropriate tools.
-2. **Security** — Identifies potential hardcoded secrets, injection vulnerabilities, and unsafe execution patterns.
-3. **Complexity** — Flags excessive cyclomatic complexity.
-4. **Documentation** — Evaluates docstring and comment coverage.
-5. **Formatting** — Checks code style and formatting consistency.
+## AI-maintained project notes (secondary — 2026-11-13)
 
-## Roadmap
+This section supplements the maintainer-authored README above. The original text has been restored verbatim from Git-history baseline `75423f635b817f18006147404445a675904325e6`; this addendum does not replace or certify the original claims.
 
-### v2.0
-
-- **SARIF Integration** — Export findings for GitHub Security integration.
-- **Deep AST Parsing** — Replace regex-based JavaScript and TypeScript scanning with Tree-sitter.
-- **Plugin Architecture** — Support custom organization-specific analysis rules.
-- **Taint Analysis** — Track untrusted input through data flows to potentially dangerous execution sinks.
-
-## License
-
-Distributed under the [MIT License](https://opensource.org/license/mit).
+- The current source tree, runtime data and tests are the implementation source of truth. Roadmap items, draft PRs and AI-generated descriptions are not shipped features by themselves.
+- Preserve real and maintainer-provided data. Never silently substitute generated or placeholder data. Clearly label and isolate synthetic fixtures.
+- Mark unverified sources, identifiers, metrics, benchmark results and external claims as unknown/unverified rather than guessing.
+- Verify setup, execution, tests and public claims against the exact current commit before using this repository in a job, research or academic application.
+- See [MODEL_AUDIT_ROUTER.md](MODEL_AUDIT_ROUTER.md) for independent model review instructions and the merge gate.
