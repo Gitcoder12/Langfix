@@ -164,3 +164,15 @@ Distributed under the [MIT License](https://opensource.org/license/mit).
 - [Company and team fit](COMPANY_FIT.md) · [README explanation draft](README_ADDENDUM_DRAFT.md)
 - [README quality checklist](README_QUALITY_CHECKLIST.md)
 - [Contributing](CONTRIBUTING.md) · [Agent instructions](AGENTS.md) · [Agent skills](SKILLS.md)
+
+## Understanding the project
+
+### In plain language
+
+A command-line code quality assistant that scans several programming languages, reports issues and can call formatters to fix files.
+
+### Technical and research view
+
+The user points LangFix at a codebase. It scans supported files, identifies configured issues and may invoke installed formatters. Every attempted fix should say whether the formatter actually succeeded.
+
+For future work, see [FEATURE_UPGRADE_PLAN.md](FEATURE_UPGRADE_PLAN.md), [ACTIVITY_LOG.md](ACTIVITY_LOG.md), [COMPANY_FIT.md](COMPANY_FIT.md) and [CONTRIBUTING.md](CONTRIBUTING.md).
