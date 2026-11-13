@@ -17,3 +17,11 @@ Python tool using ThreadPoolExecutor, incremental file caching, formatters inclu
 | YYYY-MM-DD | name | link | exact tool/version | command and fixture | pass / fail / not run | output and caveat |
 
 Record formatter executable/version, exit code, stdout/stderr and changed files. Never report successful auto-fix without verifying the tool's result and resulting diff.
+
+## Portfolio documentation rollout — 2026-11-13
+
+- Documentation PR: https://github.com/Gitcoder12/Langfix/pull/3
+- Added project-specific feature plan, company-fit mapping, plain-language and technical README explanation, and README quality checklist.
+- Added contributor and scoped agent/skills guidance where appropriate; existing sync/upstream instructions are preserved.
+- Validation: documentation/source review only; no application runtime test or deployment is claimed by this docs PR.
+- Status: draft PR, not merged.
