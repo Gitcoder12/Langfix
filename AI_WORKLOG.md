@@ -44,3 +44,6 @@ The inspected test module has two tests. Add tests for each supported extension,
 3. Replace broad "perfect" claims with explicit heuristic coverage.
 4. Add compiler-backed checks for every advertised language or narrow the supported list.
 5. Expand tests and run CI across supported Python versions.
+
+## PR head verification
+- PR #3 head CI: LangFix CI failed in the unit-test step. Both existing tests raise ValueError because test_langfix.py unpacks analyze_file(...) into three values while the implementation returns a dictionary. The self-scan step was skipped after the failure. This is a verified P1 test/API-contract mismatch.
