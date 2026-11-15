@@ -1,33 +1,37 @@
-import unittest
 import os
+import unittest
+
 from langfix import analyze_file
 
-class TestLangFix(unittest.TestCase):
 
+class TestLangFix(unittest.TestCase):
     def setUp(self):
-        # Create a perfectly safe Python file
-        with open("test_good.py", "w") as f:
-            f.write('def add(a, b):\n    """Adds two numbers."""\n    return a + b\n')
-            
-        # Create a dangerous Python file
-        with open("test_bad.py", "w") as f:
-            f.write('password = "secret123"\n')
+        with open("test_good.py", "w", encoding="utf-8") as handle:
+            handle.write(
+                'def add(a, b):\n'
+                '    """Adds two numbers."""\n'
+                '    return a + b\n'
+            )
+
+        with open("test_bad.py", "w", encoding="utf-8") as handle:
+            handle.write('password = "secret123"\n')
 
     def tearDown(self):
-        # Clean up test files
-        if os.path.exists("test_good.py"): os.remove("test_good.py")
-        if os.path.exists("test_bad.py"): os.remove("test_bad.py")
+        for path in ("test_good.py", "test_bad.py"):
+            if os.path.exists(path):
+                os.remove(path)
 
-    def test_good_code(self):
-        score, vibe, note = analyze_file("test_good.py")
-        self.assertEqual(vibe, "AWESOME")
-        self.assertEqual(score, 100)
+    def test_good_code_returns_expected_analysis_mapping(self):
+        result = analyze_file("test_good.py")
+        self.assertEqual(result["vibe"], "AWESOME")
+        self.assertEqual(result["score"], 100)
 
-    def test_security_flaw(self):
-        score, vibe, note = analyze_file("test_bad.py")
-        self.assertEqual(vibe, "COOKED")
-        self.assertEqual(score, 10)
-        self.assertIn("Hardcoded secret", note)
+    def test_security_flaw_returns_failure_mapping(self):
+        result = analyze_file("test_bad.py")
+        self.assertEqual(result["vibe"], "FAIL")
+        self.assertEqual(result["score"], 10)
+        self.assertIn("Hardcoded secret/password", result["note"])
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()
