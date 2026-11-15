@@ -47,3 +47,8 @@ The inspected test module has two tests. Add tests for each supported extension,
 
 ## PR head verification
 - PR #3 head CI: LangFix CI failed in the unit-test step. Both existing tests raise ValueError because test_langfix.py unpacks analyze_file(...) into three values while the implementation returns a dictionary. The self-scan step was skipped after the failure. This is a verified P1 test/API-contract mismatch.
+
+## Follow-up remediation evidence
+- A separate draft PR [#4](https://github.com/Gitcoder12/Langfix/pull/4) updates the two tests to match the dictionary result contract returned by `analyze_file`.
+- PR #4 head CI run 43734138407 completed successfully: dependency installation, unit tests, and the repository self-scan all passed.
+- This fixes the verified test/API-contract mismatch only. The unsupported-compiler scoring and formatter-result issues listed above remain open.
