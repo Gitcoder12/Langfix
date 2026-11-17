@@ -107,3 +107,22 @@ This section supplements the maintainer-authored README above. The original text
 - Mark unverified sources, identifiers, metrics, benchmark results and external claims as unknown/unverified rather than guessing.
 - Verify setup, execution, tests and public claims against the exact current commit before using this repository in a job, research or academic application.
 - See [MODEL_AUDIT_ROUTER.md](MODEL_AUDIT_ROUTER.md) for independent model review instructions and the merge gate.
+
+---
+
+## Engineering Audit & Handover — 2026-11-17
+
+**Reviewed commit:** `09aaae074cf30e9f874fd49794dc0bd4b3f7fc77` (`main`). Static inspection covered `langfix.py` and `test_langfix.py`; tests were not executed.
+
+### Confirmed findings
+- The security checks in `security_scan()` are regular-expression heuristics. They can flag harmless text and miss obfuscated, multiline, dynamically constructed, or language-specific vulnerabilities; results must not be presented as a complete security audit.
+- The JavaScript/TypeScript syntax path invokes `node --check`. This is not a TypeScript type-check/build and does not establish that a TypeScript project compiles.
+- The current tests cover a clean Python example and a hardcoded-secret example; they do not establish detection quality across languages or false-positive/false-negative rates.
+- The cache loader silently falls back to an empty cache on any exception, which can hide cache corruption.
+
+### Next actions
+1. Label findings as heuristic signals and include the exact matched rule/location in each report.
+2. Use language-native parsers/type-checkers where available and report unavailable tools distinctly.
+3. Add adversarial fixtures, false-positive tests, cache-corruption tests, and a documented evaluation corpus.
+
+**Verification status:** static source/test inspection only; test suite and multi-language toolchain behavior remain unverified.
