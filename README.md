@@ -126,3 +126,26 @@ This section supplements the maintainer-authored README above. The original text
 3. Add adversarial fixtures, false-positive tests, cache-corruption tests, and a documented evaluation corpus.
 
 **Verification status:** static source/test inspection only; test suite and multi-language toolchain behavior remain unverified.
+
+
+---
+
+## Branch Activity & Development History
+
+**Audit date:** 2026-11-18 · **Comparison base:** `main`
+
+| Branch | Difference from `main` | Observed work / changed paths |
+|---|---:|---|
+| `chore/remove-emoji-glyphs-2026-11-13` | 5 ahead / 3 behind | Glyph cleanup in `langfix.py` |
+| `docs/portfolio-operating-kit-2026-11-13` | 7 / 3 | Activity log, agent guidance, worklog, company-fit notes, contributor guide, feature plan and skills; README has additions and removals |
+| `docs/project-status-2026-11-16-langfix` | 1 / 1 | Project status snapshot: `PROJECT_STATUS.md` |
+| `fix/langfix-test-result-contract-2026-11-15` | 1 / 1 | Test-result contract and assertion updates in `test_langfix.py` |
+
+### Open pull requests observed during this audit
+
+- [PR #5 — project status snapshot](https://github.com/Gitcoder12/Langfix/pull/5)
+- [PR #4 — analysis result contract tests](https://github.com/Gitcoder12/Langfix/pull/4)
+- [PR #3 — project handbook and safe formatter roadmap](https://github.com/Gitcoder12/Langfix/pull/3)
+- [PR #1 — remove emoji glyphs](https://github.com/Gitcoder12/Langfix/pull/1)
+
+**Review note:** The portfolio branch includes README removals. Review that diff carefully. Run the test-result contract suite on the exact PR head before merging. No branches have been merged or deleted by this documentation update.
