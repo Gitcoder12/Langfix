@@ -126,3 +126,10 @@ This section supplements the maintainer-authored README above. The original text
 3. Add adversarial fixtures, false-positive tests, cache-corruption tests, and a documented evaluation corpus.
 
 **Verification status:** static source/test inspection only; test suite and multi-language toolchain behavior remain unverified.
+
+---
+
+## Examples Used
+- Scanning a Python project for complexity and missing documentation
+- Detecting risky command execution patterns in source code
+- Applying formatting fixes across a mixed-language repository
