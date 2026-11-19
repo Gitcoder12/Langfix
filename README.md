@@ -111,3 +111,26 @@ python -m compileall -q .
 ## License
 
 MIT — see LICENSE.
+
+---
+
+## Comparison with Existing Open-Source Projects
+
+LangFix is documented as a multi-language source-inspection CLI with conservative repair proposals, available syntax validators, heuristic findings and terminal/JSON/SARIF reports. These projects provide adjacent linting, static-analysis and formatting capabilities.
+
+| Project | Established focus | Relationship to LangFix |
+|---|---|---|
+| [Semgrep](https://github.com/semgrep/semgrep) | Static analysis with configurable rules across many languages | A much deeper rule-based code-analysis engine; LangFix currently uses a smaller set of heuristic checks and optional external validators, not Semgrep-equivalent semantic analysis. |
+| [Ruff](https://github.com/astral-sh/ruff) | Fast Python linter and formatter | A focused, mature Python tool with extensive rule coverage; LangFix aims for a cross-language single entry point, but its Python analysis is narrower. |
+| [Prettier](https://github.com/prettier/prettier) | Opinionated formatter for many languages and file types | A dedicated formatting engine; LangFix invokes supported formatters conservatively after validation rather than replacing their formatting logic. |
+
+### Where LangFix is different
+- **Cross-language entry point:** one CLI can detect files and report which validators are available across a range of languages.
+- **Conservative repair workflow:** fixes are preview-only by default and require explicit opt-in to write changes.
+- **Multiple report formats:** terminal output, JSON and SARIF support different developer and CI workflows.
+
+### Where established projects are stronger
+Semgrep has substantially deeper static-analysis capabilities; Ruff has much broader Python rule coverage; Prettier is a mature formatter. LangFix should not claim to be a full SAST platform, compiler or replacement for language-specific toolchains. Its advantage is a unified, cautious orchestration layer.
+
+### Evidence and limitations
+Make validator availability explicit per language, retain exact tool versions and exit codes, and test both safe and invalid source samples. Heuristic scores are prioritization signals, not calibrated code-quality or security measurements. Preserve the default preview-only behavior and never apply a repair when validation is unavailable or fails. This is a scope comparison, not a defect-detection benchmark.
