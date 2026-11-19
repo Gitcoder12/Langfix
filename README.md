@@ -157,7 +157,7 @@ Treat a finding as a prompt for review—not a verdict.
 - HTML, CSS and SQL have no syntax validator configured.
 - External tool availability determines how much validation is possible.
 - The demo covers a deliberately small set of deterministic examples; broader language fixtures and real-repository benchmarks are still needed.
-- The CLI cache/report behavior needs further hardening before cached scans should be treated as complete audit reports.
+- The CLI currently skips unchanged files using its hash cache but does not rehydrate cached result rows into the report. A repeat scan can therefore omit unchanged files from its output; clear .langfix_cache.json when you need a complete fresh report.
 
 ## Development
 
