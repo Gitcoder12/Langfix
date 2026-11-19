@@ -11,6 +11,8 @@ from concurrent.futures import ThreadPoolExecutor
 from rich.console import Console
 from rich.panel import Panel
 from radon.complexity import cc_visit
+from lang_registry import LANGUAGE_RULES, language_for_extension
+from fixer import fix_file, validate_code
 
 console = Console()
 CACHE_FILE = ".langfix_cache.json"
@@ -58,27 +60,19 @@ def security_scan(code_content: str, ext: str) -> List[str]:
     return issues
 
 def check_syntax(file_path: str, ext: str) -> str:
+    language = language_for_extension(ext)
+    if not language:
+        return "SKIPPED (Unsupported language)"
     try:
-        if ext == '.py':
-            with open(file_path, "r", encoding="utf-8") as f:
-                ast.parse(f.read())
-        elif ext in ['.js', '.ts']:
-            res = subprocess.run(["node", "--check", file_path], capture_output=True, text=True)
-            if res.returncode != 0: return res.stderr.split('\n')[0]
-        elif ext == '.php':
-            res = subprocess.run(["php", "-l", file_path], capture_output=True, text=True)
-            if res.returncode != 0: return res.stdout
-        elif ext == '.rb':
-            res = subprocess.run(["ruby", "-c", file_path], capture_output=True, text=True)
-            if res.returncode != 0: return res.stderr
-        elif ext == '.go':
-            res = subprocess.run(["gofmt", "-e", file_path], capture_output=True, text=True)
-            if res.returncode != 0: return res.stderr
-        return "OK"
-    except FileNotFoundError:
-        return "SKIPPED (Compiler not installed)"
-    except Exception as e:
-        return f"Error: {str(e)}"
+        with open(file_path, "r", encoding="utf-8") as source:
+            result = validate_code(source.read(), language)
+        if result["status"] == "passed":
+            return "OK"
+        if result["status"] == "failed":
+            return result["message"]
+        return f"SKIPPED ({result['message']})"
+    except Exception as exc:
+        return f"Error: {exc}"
 
 def check_complexity(code_content: str, ext: str) -> List[str]:
     notes = []
@@ -111,23 +105,18 @@ def check_documentation(code_content: str, ext: str) -> Tuple[int, List[str]]:
     return doc_score, notes
 
 def auto_fix(file_path: str, ext: str) -> str:
+    language = language_for_extension(ext)
+    if not language:
+        return "No fixer for this language"
     try:
-        if ext == '.py':
-            subprocess.run(["black", "-q", file_path], capture_output=True)
-            return "Fixed with black"
-        elif ext in ['.js', '.ts']:
-            subprocess.run(["npx", "prettier", "--write", file_path], capture_output=True, shell=True)
-            return "Fixed with prettier"
-        elif ext == '.go':
-            subprocess.run(["gofmt", "-w", file_path], capture_output=True)
-            return "Fixed with gofmt"
-        return "No auto-fixer"
-    except Exception:
-        return "Auto-fix failed"
+        result = fix_file(file_path, use_formatter=True, apply=True)
+        return result["diff"] if result["changed"] else (result["formatter_note"] or "No changes needed")
+    except Exception as exc:
+        return f"Auto-fix skipped: {exc}"
 
 def analyze_file(file_path: str) -> Dict[str, Any]:
     ext = os.path.splitext(file_path)[1]
-    supported = ['.py', '.js', '.ts', '.php', '.rb', '.go', '.rs', '.c', '.cpp', '.java']
+    supported = {ext for rules in LANGUAGE_RULES.values() for ext in rules['extensions']}
     
     if ext not in supported:
         return {"file": file_path, "score": 100, "vibe": "IGNORED", "note": "Unsupported"}
@@ -189,10 +178,23 @@ def generate_sarif(results: List[Dict[str, Any]]) -> Dict[str, Any]:
     }
 
 def process_single_file(filepath: str, fix: bool) -> Dict[str, Any]:
-    ext = os.path.splitext(filepath)[1]
+    fix_report = None
     if fix:
-        auto_fix(filepath, ext)
-    return analyze_file(filepath)
+        try:
+            fix_report = fix_file(filepath, use_formatter=True, apply=True)
+        except Exception as exc:
+            fix_report = {"changed": False, "diff": "", "error": str(exc)}
+    result = analyze_file(filepath)
+    if fix_report is not None:
+        result["fix"] = {
+            "changed": fix_report.get("changed", False),
+            "diff": fix_report.get("diff", ""),
+            "error": fix_report.get("error"),
+            "validation_before": fix_report.get("validation_before"),
+            "validation_after": fix_report.get("validation_after"),
+            "formatter_note": fix_report.get("formatter_note"),
+        }
+    return result
 
 def main():
     parser = argparse.ArgumentParser(description="LangFix - Polyglot Static Analysis Engine")
@@ -215,6 +217,7 @@ def main():
     new_cache = {}
     files_to_scan = []
     
+    supported_extensions = {ext for rules in LANGUAGE_RULES.values() for ext in rules['extensions']}
     ignore_dirs = [".git", "venv", "__pycache__", "node_modules", ".github"]
     ignore_files = ["langfix.py", "test_langfix.py"]
 
@@ -225,7 +228,7 @@ def main():
             filepath = os.path.join(root, file)
             ext = os.path.splitext(file)[1]
             
-            if ext in ['.py', '.js', '.ts', '.php', '.rb', '.go', '.rs', '.c', '.cpp', '.java']:
+            if ext in supported_extensions:
                 file_hash = get_file_hash(filepath)
                 new_cache[filepath] = file_hash
                 
@@ -262,6 +265,9 @@ def main():
             console.print(f"[bold]{result['file']}[/bold]")
             console.print(f"  - Score: [{color}]{result['score']}/100 ({result['vibe']})[/{color}]")
             console.print(f"  - Note: {result['note']}\n")
+            if result.get("fix", {}).get("changed"):
+                console.print("[bold cyan]Unified fix diff:[/bold cyan]")
+                console.print(result["fix"]["diff"])
 
         project_color = "red" if avg_score < 40 else "yellow" if avg_score < 70 else "blue" if avg_score < 100 else "green"
         panel = Panel(f"Project Average: [{project_color}]{avg_score}/100 ({project_vibe})[/{project_color}]", title="🏁 Final Vibe Check", expand=False)

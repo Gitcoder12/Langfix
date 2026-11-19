@@ -1,18 +1,25 @@
 [project]
 name = "langfix"
-version = "1.0.0"
-description = "An autocorrector, security linter, and performance scorer for polyglot programming."
+version = "1.1.0"
+description = "A conservative polyglot source-code scanner and repair toolkit."
 authors = [{ name = "DHARAVATH SATVIK" }]
-requires-python = ">=3.8"
+requires-python = ">=3.11"
 dependencies = [
     "rich>=13.0.0",
     "radon>=6.0.0",
     "black>=23.0.0",
 ]
 
+[project.optional-dependencies]
+yaml = ["PyYAML>=6.0"]
+dev = ["pytest>=7.0.0"]
+
 [project.scripts]
 langfix = "langfix:main"
 
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=68.0"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = ["langfix", "lang_registry", "detector", "fixer"]
