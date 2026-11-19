@@ -1,135 +1,122 @@
+# LangFix
 
-LangFix
+A lightweight, multi-language source-code inspection CLI. LangFix scans a project for selected syntax problems, heuristic security patterns, Python complexity/documentation issues, and formatting opportunities. It can emit JSON or SARIF reports and optionally run supported formatters.
 
-A multi-threaded static analysis engine for polyglot software environments. Audits syntax, structural security vulnerabilities, and code complexity across 10 programming languages.
+> **Scope:** LangFix is an early-stage static-analysis utility, not a compiler, SAST platform, or complete security audit. Its pattern-based checks can produce false positives and miss real issues. Review every finding before acting on it.
 
-Features
+## What it checks
 
-• Engine: Multi-threaded file analyzer utilizing ThreadPoolExecutor.
-• Cache: MD5-hashed state optimization to skip unchanged files.
-• Fixers: Automated styling via Black, Prettier, and Gofmt.
-• Security: Strict linting for credential leaks, execution sinks, and command injections.
-• Metrics: Cyclomatic complexity verification using Radon.
+| Area | Current behavior |
+|---|---|
+| File coverage | Discovers Python, JavaScript, TypeScript, PHP, Ruby, Go, Rust, C, C++, and Java files |
+| Syntax | Python AST parsing; external checks for JavaScript/TypeScript (Node), PHP, Ruby, and Go when their tools are installed |
+| Security signals | Regex checks for selected hardcoded-secret, SQL-like, dynamic-execution, Node child-process, and PHP shell-execution patterns |
+| Complexity | Radon cyclomatic-complexity checks for Python |
+| Documentation | Python function/class docstring coverage |
+| Formatting | Black check for Python |
+| Auto-fix | Black for Python, Prettier for JavaScript/TypeScript, and gofmt for Go |
+| Reports | Terminal, JSON, and SARIF |
 
-Setup
+Language support is not uniform: discovering a file extension does not mean LangFix performs a language-native parse or full semantic analysis for that language. Missing external tools may cause checks to be skipped.
 
-bash
+## Requirements
+
+- Python 3.10+
+- Install the Python dependencies from `requirements.txt`
+- Optional tools, depending on the files you scan: Node.js, PHP, Ruby, and Go toolchains; Prettier for JS/TS formatting
+
+## Install
+
+```bash
 git clone https://github.com/Gitcoder12/Langfix.git
 cd Langfix
-pip install -r requirements.txt
-Use code with caution.
+python -m pip install -r requirements.txt
+```
 
-Usage
+## Usage
 
-bash
+Run a scan:
+
+```bash
 python langfix.py ./src
+```
+
+Apply supported formatting fixes before analysis:
+
+```bash
 python langfix.py ./src --fix
+```
+
+Write machine-readable JSON to stdout:
+
+```bash
 python langfix.py ./src --json
+```
+
+Generate a SARIF report at `langfix.sarif`:
+
+```bash
+python langfix.py ./src --sarif
+```
+
+Choose the worker count:
+
+```bash
 python langfix.py ./src --workers 8
-Use code with caution.
+```
 
-Example Output (Real Repositories)
+Combine flags where appropriate, for example:
 
-Running python langfix.py ./github-clones --workers 8
-Scanning ./github-clones (Threads: 8)...
---- Repository: django/django (Python) ---
-./github-clones/django/django/core/management/base.py
-• Score: 55/100 (POOR)
-• Note: Issues: 'BaseCommand' too complex (14), 3/12 missing docstrings
-./github-clones/django/django/db/models/sql/compiler.py
-• Score: 100/100 (AWESOME)
-• Note: Perfect code.
---- Repository: nodejs/node (JavaScript) ---
-./github-clones/node/lib/child_process.js
-• Score: 10/100 (FAIL)
-• Note: Security Risk: Node.js child_process execution
-./github-clones/node/lib/internal/bootstrap/node.js
-• Score: 75/100 (GOOD)
-• Note: Issues: Needs formatting (prettier)
---- Repository: apache/logging-log4j2 (Java) ---
-./github-clones/log4j/log4j-core/src/main/java/org/apache/logging/log4j/core/lookup/JndiLookup.java
-• Score: 10/100 (FAIL)
-• Note: Security Risk: Dangerous JNDI lookup detected (Log4Shell pattern)
---- Repository: php/php-src (PHP) ---
-./github-clones/php-src/sapi/cgi/cgi_main.c
-• Score: 10/100 (FAIL)
-• Note: Security Risk: PHP shell execution risk (NSA CVE surface)
-./github-clones/php-src/Zend/zend_ast.c
-• Score: 0/100 (FAIL)
-• Note: Syntax Error: Unexpected end of file (Compiler check failed)
---- Repository: facebook/react (JavaScript) ---
-./github-clones/react/packages/react-dom/src/client/ReactDOMHostConfig.js
-• Score: 30/100 (FAIL)
-• Note: Performance Risk: 'appendChild' too complex (22)
-Project Average: 40/100 (POOR)
+```bash
+python langfix.py ./src --json --workers 8
+```
 
-Scoring Logic
+## Scoring
 
-LangFix calculates the final score (0-100). Failing critical checks immediately drops the score:
-• Syntax Error: Score drops to 0 (FAIL)
-• Security Vulnerability (Secrets, SQLi, RCE): Score drops to 10 (FAIL)
-• Performance/Complexity Risk (Radon > 10): Score drops to 30 (FAIL)
-• Formatting & Docs (If syntax and security pass): The score is the average of the Format score (100 if clean, 50 if needs formatting) and the Documentation score (percentage of documented functions).
-Grade Definitions:
-• 100: AWESOME
-• 70-99: GOOD
-• 40-69: POOR
-• 0-39: FAIL
+Each analyzed file receives a heuristic score from 0 to 100:
 
-Evaluation Pillars
+| Condition | Score |
+|---|---:|
+| Syntax check reports an error | 0 |
+| A configured security pattern matches | 10 |
+| Python complexity exceeds the configured threshold | 30 |
+| Otherwise | Average of formatting and documentation scores |
 
-1. Syntax: Ensures native compilers parse the code cleanly.
-2. Security: Detects hardcoded secrets and dangerous execution paths.
-3. Complexity: Flags spaghetti code exceeding standard cyclomatic limits.
-4. Docs: Verifies docstring and comment density.
-5. Format: Enforces strict uniform spacing criteria.
+Grades are `AWESOME` (100), `GOOD` (70–99), `POOR` (40–69), and `FAIL` (0–39).
 
-Roadmap (v2.0)
+These scores are prioritization signals from the current implementation—not a calibrated measure of overall code quality or security. In particular, checks and scoring differ by language.
 
-• SARIF Integration: Export results in SARIF format for native GitHub Security tab alerts.
-• Deep AST Parsing: Replace regex-based JS/TS scanning with strict Tree-sitter AST analysis.
-• Plugin Architecture: Allow teams to load custom company-specific linting rules.
-• Taint Analysis: Implement data-flow tracking to trace untrusted inputs directly to execution sinks.
+## Cache and exclusions
 
-License
+LangFix stores file hashes in `.langfix_cache.json` to skip unchanged files on later runs. The scanner currently excludes `.git`, `venv`, `__pycache__`, `node_modules`, and `.github`, along with its own main and test files.
 
-Distributed under the MIT License.
+## Development
 
+Install dependencies, then run the current test module with:
 
----
+```bash
+python -m unittest test_langfix.py
+```
 
-## AI-maintained project notes (secondary — 2026-11-13)
+The test module and analyzer interface are currently out of sync; treat the test result as a known maintenance issue until that is corrected. Do not interpret the presence of CI configuration as proof that the suite passes.
 
-This section supplements the maintainer-authored README above. The original text has been restored verbatim from Git-history baseline `75423f635b817f18006147404445a675904325e6`; this addendum does not replace or certify the original claims.
+## Current limitations
 
-- The current source tree, runtime data and tests are the implementation source of truth. Roadmap items, draft PRs and AI-generated descriptions are not shipped features by themselves.
-- Preserve real and maintainer-provided data. Never silently substitute generated or placeholder data. Clearly label and isolate synthetic fixtures.
-- Mark unverified sources, identifiers, metrics, benchmark results and external claims as unknown/unverified rather than guessing.
-- Verify setup, execution, tests and public claims against the exact current commit before using this repository in a job, research or academic application.
-- See [MODEL_AUDIT_ROUTER.md](MODEL_AUDIT_ROUTER.md) for independent model review instructions and the merge gate.
+- Security checks are regex heuristics; they do not perform taint analysis or prove exploitability.
+- JavaScript/TypeScript checking uses `node --check`; it is not a TypeScript type-check or project build.
+- Several recognized extensions do not yet have a language-native syntax checker.
+- Complexity and docstring analysis currently apply to Python only.
+- Formatter availability and behavior depend on tools installed in the environment.
+- Cached files are skipped, so use a fresh scan when validating changes to scanner behavior.
 
----
+## Roadmap
 
-## Engineering Audit & Handover — 2026-11-17
+- Language-native parsing and clearer per-language capability reporting
+- More precise findings with rule identifiers and source locations
+- Adversarial fixtures and false-positive/false-negative evaluation
+- Cache integrity handling and broader automated tests
+- Deeper data-flow and taint analysis
 
-**Reviewed commit:** `09aaae074cf30e9f874fd49794dc0bd4b3f7fc77` (`main`). Static inspection covered `langfix.py` and `test_langfix.py`; tests were not executed.
+## License
 
-### Confirmed findings
-- The security checks in `security_scan()` are regular-expression heuristics. They can flag harmless text and miss obfuscated, multiline, dynamically constructed, or language-specific vulnerabilities; results must not be presented as a complete security audit.
-- The JavaScript/TypeScript syntax path invokes `node --check`. This is not a TypeScript type-check/build and does not establish that a TypeScript project compiles.
-- The current tests cover a clean Python example and a hardcoded-secret example; they do not establish detection quality across languages or false-positive/false-negative rates.
-- The cache loader silently falls back to an empty cache on any exception, which can hide cache corruption.
-
-### Next actions
-1. Label findings as heuristic signals and include the exact matched rule/location in each report.
-2. Use language-native parsers/type-checkers where available and report unavailable tools distinctly.
-3. Add adversarial fixtures, false-positive tests, cache-corruption tests, and a documented evaluation corpus.
-
-**Verification status:** static source/test inspection only; test suite and multi-language toolchain behavior remain unverified.
-
----
-
-## Examples Used
-- Scanning a Python project for complexity and missing documentation
-- Detecting risky command execution patterns in source code
-- Applying formatting fixes across a mixed-language repository
+MIT — see [LICENSE](LICENSE).
