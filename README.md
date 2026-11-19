@@ -122,7 +122,7 @@ For in-memory source:
 ~~~python
 from fixer import fix_code, scan_code, validate_code
 
-validation = validate_code("value = 1\\n", "python")
+validation = validate_code("value = 1\n", "python")
 findings = scan_code("value = 1   ", "python")
 proposal = fix_code("value = 1   ", "python")
 
