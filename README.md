@@ -1,122 +1,113 @@
 # LangFix
 
-A lightweight, multi-language source-code inspection CLI. LangFix scans a project for selected syntax problems, heuristic security patterns, Python complexity/documentation issues, and formatting opportunities. It can emit JSON or SARIF reports and optionally run supported formatters.
+LangFix is an early-stage, multi-language source inspection CLI with conservative repair proposals. It combines extension/signature-based language detection, available syntax validators, heuristic findings, Python complexity/documentation checks, and terminal/JSON/SARIF reports.
 
-> **Scope:** LangFix is an early-stage static-analysis utility, not a compiler, SAST platform, or complete security audit. Its pattern-based checks can produce false positives and miss real issues. Review every finding before acting on it.
+> **Scope:** LangFix is not a compiler, complete SAST platform, or security audit. Heuristic checks can produce false positives and miss real issues. Review findings and proposed diffs before acting.
 
-## What it checks
+## Quick demo
+
+Run the deterministic messy-code demo. It generates valid-but-messy Python/JSON samples and invalid Python/JSON samples, then prints validation results and unified diffs. It is preview-only and never writes source files.
+
+~~~bash
+python demo.py
+~~~
+
+Run the demo tests:
+
+~~~bash
+python -m unittest -v test_langfix.py test_demo.py
+~~~
+
+## Current capabilities
 
 | Area | Current behavior |
 |---|---|
-| File coverage | Discovers Python, JavaScript, TypeScript, PHP, Ruby, Go, Rust, C, C++, and Java files |
-| Syntax | Python AST parsing; external checks for JavaScript/TypeScript (Node), PHP, Ruby, and Go when their tools are installed |
-| Security signals | Regex checks for selected hardcoded-secret, SQL-like, dynamic-execution, Node child-process, and PHP shell-execution patterns |
-| Complexity | Radon cyclomatic-complexity checks for Python |
-| Documentation | Python function/class docstring coverage |
-| Formatting | Black check for Python |
-| Auto-fix | Black for Python, Prettier for JavaScript/TypeScript, and gofmt for Go |
+| Language registry | 18 registered languages; capability varies by language |
+| Detection | Filename extensions first, then confidence-scored source signatures |
+| Built-in validation | Python AST, JSON parser, optional PyYAML parser |
+| External validation | Optional local tools for JavaScript, TypeScript, Java, C/C++, Go, Rust, Ruby, PHP, Bash, Kotlin, and Swift |
+| Findings | Trailing whitespace, final newline, and configured heuristic patterns |
+| Python analysis | Radon complexity and function/class docstring checks |
+| Formatting | Black and Prettier when installed and source validation passes |
 | Reports | Terminal, JSON, and SARIF |
 
-Language support is not uniform: discovering a file extension does not mean LangFix performs a language-native parse or full semantic analysis for that language. Missing external tools may cause checks to be skipped.
+A registered language is not a promise of a built-in parser. External validation is reported as skipped when its tool is unavailable. HTML, CSS, and SQL currently have no syntax validator configured. Tree-sitter metadata is not an implemented parser integration.
 
 ## Requirements
 
-- Python 3.10+
-- Install the Python dependencies from `requirements.txt`
-- Optional tools, depending on the files you scan: Node.js, PHP, Ruby, and Go toolchains; Prettier for JS/TS formatting
+- Python 3.11+
+- Install dependencies from requirements.txt
+- Optional language toolchains and formatters for the languages you want validated or formatted
 
 ## Install
 
-```bash
+~~~bash
 git clone https://github.com/Gitcoder12/Langfix.git
 cd Langfix
 python -m pip install -r requirements.txt
-```
+~~~
 
 ## Usage
 
-Run a scan:
+Scan a project:
 
-```bash
+~~~bash
 python langfix.py ./src
-```
+~~~
 
-Apply supported formatting fixes before analysis:
+Apply supported repairs before analysis (the --fix flag explicitly opts into writes):
 
-```bash
+~~~bash
 python langfix.py ./src --fix
-```
+~~~
 
-Write machine-readable JSON to stdout:
+JSON output:
 
-```bash
+~~~bash
 python langfix.py ./src --json
-```
+~~~
 
-Generate a SARIF report at `langfix.sarif`:
+Generate a SARIF report:
 
-```bash
+~~~bash
 python langfix.py ./src --sarif
-```
+~~~
 
-Choose the worker count:
+## Library API
 
-```bash
-python langfix.py ./src --workers 8
-```
+The library defaults to preview-only behavior:
 
-Combine flags where appropriate, for example:
+~~~python
+from fixer import fix_file
 
-```bash
-python langfix.py ./src --json --workers 8
-```
+preview = fix_file("example.py")
+print(preview["diff"])
 
-## Scoring
+# Apply only after reviewing the proposal:
+applied = fix_file("example.py", apply=True)
+~~~
 
-Each analyzed file receives a heuristic score from 0 to 100:
+## Safety model
 
-| Condition | Score |
-|---|---:|
-| Syntax check reports an error | 0 |
-| A configured security pattern matches | 10 |
-| Python complexity exceeds the configured threshold | 30 |
-| Otherwise | Average of formatting and documentation scores |
+- A source file is transformed only when an available syntax validator explicitly passes.
+- Invalid or unverifiable source is preserved unchanged.
+- Shell source is excluded from whitespace cleanup because trailing spaces after a backslash can affect line continuation.
+- External processes use argument arrays, never a shell, and have a timeout.
+- Library file writes require apply=True; the CLI --fix flag explicitly opts into applying changes.
+- Formatter support is limited to known stdin/stdout integrations; tools requiring guessed file/project arguments are not invoked.
 
-Grades are `AWESOME` (100), `GOOD` (70–99), `POOR` (40–69), and `FAIL` (0–39).
+## Scoring and limitations
 
-These scores are prioritization signals from the current implementation—not a calibrated measure of overall code quality or security. In particular, checks and scoring differ by language.
+Per-file scores are heuristic prioritization signals, not calibrated measurements of code quality or security. Security checks use regex patterns rather than taint analysis. Complexity and docstring analysis currently apply only to Python. Syntax validation and formatter support differ by language and installed tools.
 
-## Cache and exclusions
-
-LangFix stores file hashes in `.langfix_cache.json` to skip unchanged files on later runs. The scanner currently excludes `.git`, `venv`, `__pycache__`, `node_modules`, and `.github`, along with its own main and test files.
+The scanner caches file hashes in .langfix_cache.json. Use a fresh scan when validating scanner changes. It excludes .git, venv, __pycache__, node_modules, and .github.
 
 ## Development
 
-Install dependencies, then run the current test module with:
-
-```bash
-python -m unittest test_langfix.py
-```
-
-The test module and analyzer interface are currently out of sync; treat the test result as a known maintenance issue until that is corrected. Do not interpret the presence of CI configuration as proof that the suite passes.
-
-## Current limitations
-
-- Security checks are regex heuristics; they do not perform taint analysis or prove exploitability.
-- JavaScript/TypeScript checking uses `node --check`; it is not a TypeScript type-check or project build.
-- Several recognized extensions do not yet have a language-native syntax checker.
-- Complexity and docstring analysis currently apply to Python only.
-- Formatter availability and behavior depend on tools installed in the environment.
-- Cached files are skipped, so use a fresh scan when validating changes to scanner behavior.
-
-## Roadmap
-
-- Language-native parsing and clearer per-language capability reporting
-- More precise findings with rule identifiers and source locations
-- Adversarial fixtures and false-positive/false-negative evaluation
-- Cache integrity handling and broader automated tests
-- Deeper data-flow and taint analysis
+~~~bash
+python -m compileall -q .
+~~~
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT — see LICENSE.
