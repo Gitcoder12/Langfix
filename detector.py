@@ -40,8 +40,29 @@ _SIGNATURES = {
 }
 
 
+_SIGNATURES.update({
+    "haskell": [(r"^\s*module\s+[A-Z]", 4), (r"\b(data|newtype|type)\s+[A-Z]", 2), (r"\bwhere\s*$", 1)],
+    "ocaml": [(r"\blet\s+(rec\s+)?[a-z_]+\s*=", 3), (r"\bmatch\s+.+\s+with", 3), (r"\btype\s+[a-z_]+\s*=", 2)],
+    "scala": [(r"\b(object|trait|case\s+class)\s+\w+", 3), (r"\bdef\s+\w+\s*\(", 2), (r"\bval\s+\w+\s*=", 1)],
+    "elixir": [(r"\bdefmodule\s+[A-Z]", 4), (r"\bdefp?\s+\w+", 2), (r"\bdo\s*$", 1)],
+    "erlang": [(r"^-module\s*\(", 5), (r"^-export\s*\(", 3), (r"\b[a-z][\w@]*\s*\([^)]*\)\s*->", 2)],
+    "clojure": [(r"^\s*\(ns\s+", 4), (r"\(defn?\s+", 3), (r"\(\w+\s+[^)]*\)", 1)],
+    "julia": [(r"\bfunction\s+\w+", 3), (r"\bmutable\s+struct\s+", 4), (r"\bend\s*$", 1)],
+    "lua": [(r"\blocal\s+function\s+\w+", 3), (r"\blocal\s+\w+\s*=", 2), (r"\bthen\s*$", 1)],
+    "perl": [(r"^\s*use\s+strict\s*;", 4), (r"\bmy\s+\$\w+", 3), (r"\bsub\s+\w+", 2)],
+    "r": [(r"\b(library|require)\s*\(", 3), (r"\w+\s*<-", 3), (r"\bdata\.frame\s*\(", 2)],
+    "dart": [(r"\bvoid\s+main\s*\(", 3), (r"\b(class|mixin|extension)\s+\w+", 2), (r"\bfinal\s+\w+", 1)],
+    "solidity": [(r"\bpragma\s+solidity", 5), (r"\bcontract\s+\w+", 4), (r"\b(mapping|modifier)\s*\(", 2)],
+    "zig": [(r"\bconst\s+std\s*=\s*@import", 4), (r"\bpub\s+fn\s+main", 3), (r"\bcomptime\b", 2)],
+    "prolog": [(r"^\s*:-\s*(module|use_module)", 4), (r"^[a-z][\w]*\([^)]*\)\s*:-", 3)],
+    "fsharp": [(r"^\s*module\s+[A-Z]", 3), (r"\blet\s+(mutable\s+)?[a-z_]+\s*=", 2), (r"\|>", 1)],
+})
+
+
 def detect_language(code: str, filename: str | None = None) -> Detection:
     """Detect a language. A known filename extension wins over heuristics."""
+    if not isinstance(code, str):
+        raise TypeError("code must be a string")
     if filename:
         language = language_for_extension(os.path.splitext(filename)[1])
         if language:
