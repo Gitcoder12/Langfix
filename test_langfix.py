@@ -1,4 +1,4 @@
-"""Regression tests for detection, validation and conservative repair."""
+"""Regression tests for polyglot detection, validation and conservative repair."""
 import tempfile
 import unittest
 from pathlib import Path
@@ -9,10 +9,17 @@ from lang_registry import LANGUAGE_RULES, language_for_extension
 
 
 class TestLangfixPolyglot(unittest.TestCase):
-    def test_registry_has_extensible_coverage(self):
-        self.assertGreaterEqual(len(LANGUAGE_RULES), 15)
+    def test_registry_has_advanced_language_coverage(self):
+        self.assertGreaterEqual(len(LANGUAGE_RULES), 30)
         self.assertEqual(language_for_extension(".rs"), "rust")
         self.assertEqual(language_for_extension("tsx"), "typescript")
+        self.assertEqual(language_for_extension(".hs"), "haskell")
+        self.assertEqual(language_for_extension(".zig"), "zig")
+        self.assertEqual(language_for_extension(".jl"), "julia")
+        self.assertEqual(language_for_extension(".sol"), "solidity")
+
+    def test_ambiguous_perl_prolog_extension_is_not_guessed(self):
+        self.assertIsNone(language_for_extension(".pl"))
 
     def test_detects_language_from_extension_and_snippet(self):
         self.assertEqual(detect_language("not really code", "app.py").language, "python")
@@ -67,6 +74,17 @@ class TestLangfixPolyglot(unittest.TestCase):
             applied = fix_file(path, apply=True)
             self.assertTrue(applied["written"])
             self.assertEqual(path.read_text(encoding="utf-8"), "value = 1\n")
+
+    def test_unavailable_advanced_validator_is_reported_as_skipped(self):
+        result = validate_code("module Example where\nmain = pure ()", "haskell")
+        if result["status"] == "skipped":
+            self.assertIsNone(result["valid"])
+            self.assertIn("not installed", result["message"])
+
+    def test_registry_only_does_not_claim_unsupported_validator(self):
+        for language in ("elixir", "erlang", "clojure", "perl", "prolog", "fsharp"):
+            self.assertIsNone(LANGUAGE_RULES[language]["validator"])
+            self.assertIsNone(validate_code("source", language)["valid"])
 
 
 if __name__ == "__main__":
