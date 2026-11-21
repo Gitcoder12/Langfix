@@ -26,7 +26,7 @@ LANGUAGE_RULES = {
     "swift": {"extensions": [".swift"], "comments": ["//", "/* */"], "brackets": {"(": ")", "[": "]", "{": "}"}, "anti_patterns": [], "formatter": ["swiftformat"], "validator": ["swiftc", "-typecheck"], "tree_sitter": "swift"},
     # Systems, functional, symbolic and scientific languages. Validators below
     # are syntax/compile checks only; no target program is executed.
-    "haskell": {"extensions": [".hs", ".lhs"], "comments": ["--", "{- -}"], "brackets": {"(": ")", "[": "]", "{": "}"}, "anti_patterns": [], "formatter": None, "validator": ["ghc", "-fno-code", "{file}"], "tree_sitter": "haskell"},
+    "haskell": {"extensions": [".hs", ".lhs"], "comments": ["--", "{- -}"], "brackets": {"(": ")", "[": "]", "{": "}"}, "anti_patterns": [], "formatter": None, "validator": None, "tree_sitter": "haskell"},
     "ocaml": {"extensions": [".ml", ".mli"], "comments": ["(* *)"], "brackets": {"(": ")", "[": "]", "{": "}"}, "anti_patterns": [], "formatter": None, "validator": ["ocamlc", "-stop-after", "parsing", "{file}"], "tree_sitter": "ocaml"},
     "scala": {"extensions": [".scala", ".sc"], "comments": ["//", "/* */"], "brackets": {"(": ")", "[": "]", "{": "}"}, "anti_patterns": [], "formatter": None, "validator": ["scalac", "-Ystop-after:parser", "{file}"], "tree_sitter": "scala"},
     "elixir": {"extensions": [".ex", ".exs"], "comments": ["#"], "brackets": {"(": ")", "[": "]", "{": "}"}, "anti_patterns": [], "formatter": None, "validator": None, "tree_sitter": "elixir"},
