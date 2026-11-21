@@ -22,16 +22,16 @@ python -m unittest -v test_langfix.py test_demo.py
 
 | Area | Current behavior |
 |---|---|
-| Language registry | 18 registered languages; capability varies by language |
+| Language registry | 32 registered languages; capability varies by language |
 | Detection | Filename extensions first, then confidence-scored source signatures |
 | Built-in validation | Python AST, JSON parser, optional PyYAML parser |
-| External validation | Optional local tools for JavaScript, TypeScript, Java, C/C++, Go, Rust, Ruby, PHP, Bash, Kotlin, and Swift |
+| External validation | Optional local tools for JavaScript, TypeScript, Java, C/C++, Go, Rust, Ruby, PHP, Bash, Kotlin, Swift, Haskell, OCaml, Scala, Julia, Lua, R, Dart, Solidity, and Zig |
 | Findings | Trailing whitespace, final newline, and configured heuristic patterns |
 | Python analysis | Radon complexity and function/class docstring checks |
 | Formatting | Black and Prettier when installed and source validation passes |
 | Reports | Terminal, JSON, and SARIF |
 
-A registered language is not a promise of a built-in parser. External validation is reported as skipped when its tool is unavailable. HTML, CSS, and SQL currently have no syntax validator configured. Tree-sitter metadata is not an implemented parser integration.
+A registered language is not a promise of a built-in parser. External validation is reported as skipped when its tool is unavailable. HTML, CSS, and SQL currently have no syntax validator configured. Tree-sitter metadata is not an implemented parser integration. Additional recognised languages include Haskell, OCaml, Scala, Elixir, Erlang, Clojure, Julia, Lua, Perl, R, Dart, Solidity, Zig, Prolog, and F#. Some are detection/registry-only until a safe syntax validator is implemented. The `.pl` extension is intentionally ambiguous between Perl and Prolog and is not guessed.
 
 ## Requirements
 
