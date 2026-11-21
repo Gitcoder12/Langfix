@@ -4,6 +4,7 @@ from __future__ import annotations
 import ast
 import difflib
 import json
+import math
 import os
 import shutil
 import subprocess
@@ -14,7 +15,7 @@ from lang_registry import LANGUAGE_RULES
 
 
 def _run(command: list[str], *, input_text: str | None = None, timeout: int = 10) -> subprocess.CompletedProcess:
-    if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or timeout <= 0:
+    if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or not math.isfinite(timeout) or timeout <= 0:
         raise ValueError("timeout must be a finite positive number")
     return subprocess.run(command, input=input_text, capture_output=True, text=True, timeout=timeout, check=False)
 
