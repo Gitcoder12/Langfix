@@ -6,7 +6,7 @@ A language is not syntax-validated unless its validator is explicitly supported.
 from __future__ import annotations
 
 LANGUAGE_RULES = {
-    "python": {"extensions": [".py", ".pyw"], "comments": ["#"], "brackets": {"(": ")", "[": "]", "{": "}"}, "anti_patterns": [r"\beval\s*\(", r"\bexec\s*("], "formatter": ["black", "--quiet", "-"], "validator": "python_ast", "tree_sitter": "python"},
+    "python": {"extensions": [".py", ".pyw"], "comments": ["#"], "brackets": {"(": ")", "[": "]", "{": "}"}, "anti_patterns": [r"\beval\s*\(", r"\bexec\s*\("], "formatter": ["black", "--quiet", "-"], "validator": "python_ast", "tree_sitter": "python"},
     "javascript": {"extensions": [".js", ".mjs", ".cjs", ".jsx"], "comments": ["//", "/* */"], "brackets": {"(": ")", "[": "]", "{": "}"}, "anti_patterns": [r"\beval\s*\(", r"document\.write\s*\("], "formatter": ["prettier", "--parser", "babel"], "validator": ["node", "--check"], "tree_sitter": "javascript"},
     "typescript": {"extensions": [".ts", ".tsx"], "comments": ["//", "/* */"], "brackets": {"(": ")", "[": "]", "{": "}"}, "anti_patterns": [r"\bas\s+any\b"], "formatter": ["prettier", "--parser", "typescript"], "validator": ["tsc", "--noEmit", "--pretty", "false"], "tree_sitter": "typescript"},
     "java": {"extensions": [".java"], "comments": ["//", "/* */"], "brackets": {"(": ")", "[": "]", "{": "}"}, "anti_patterns": [r"Runtime\.getRuntime\(\)\.exec"], "formatter": ["google-java-format", "--replace"], "validator": ["javac"], "tree_sitter": "java"},
