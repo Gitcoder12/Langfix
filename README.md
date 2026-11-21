@@ -22,7 +22,7 @@ python -m unittest -v test_langfix.py test_demo.py
 
 | Area | Current behavior |
 |---|---|
-| Language registry | 32 registered languages; capability varies by language |
+| Language registry | 33 registered languages; capability varies by language |
 | Detection | Filename extensions first, then confidence-scored source signatures |
 | Built-in validation | Python AST, JSON parser, optional PyYAML parser |
 | External validation | Optional local tools for JavaScript, TypeScript, Java, C/C++, Go, Rust, Ruby, PHP, Bash, Kotlin, Swift, Haskell, OCaml, Scala, Julia, Lua, R, Dart, Solidity, and Zig |
