@@ -87,5 +87,12 @@ class TestLangfixPolyglot(unittest.TestCase):
             self.assertIsNone(validate_code("source", language)["valid"])
 
 
+    def test_validator_rejects_non_finite_timeouts(self):
+        import math
+        for timeout in (math.nan, math.inf, -math.inf):
+            with self.assertRaises(ValueError):
+                validate_code("value = 1", "python", timeout=timeout)
+
+
 if __name__ == "__main__":
     unittest.main()
