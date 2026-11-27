@@ -120,23 +120,23 @@ def _format_with_tool(code: str, language: str, timeout: int) -> tuple[str, str 
         except subprocess.TimeoutExpired:
             return code, f"Formatter exceeded {timeout}s"
     elif executable == "rustfmt":
-        # rustfmt expects a file path for stable edition-aware formatting.
-        # Use a temporary file and stdout output so the target is never modified.
+        # rustfmt normally writes its result to the supplied file. Point it at
+        # a disposable copy, then read that copy back; the target file is never
+        # passed to rustfmt and cannot be modified by this formatter adapter.
         with tempfile.TemporaryDirectory(prefix="langfix-rustfmt-") as tmp:
             source = Path(tmp) / "input.rs"
             source.write_text(code, encoding="utf-8")
-            command = [
-                "rustfmt",
-                "--emit",
-                "stdout",
-                "--edition",
-                "2021",
-                str(source),
-            ]
+            command = ["rustfmt", "--edition", "2021", str(source)]
             try:
                 result = _run(command, timeout=timeout)
             except subprocess.TimeoutExpired:
                 return code, f"Formatter exceeded {timeout}s"
+            if result.returncode:
+                return code, (result.stderr or result.stdout).strip()[:1000] or "Formatter failed"
+            try:
+                return source.read_text(encoding="utf-8"), None
+            except OSError as exc:
+                return code, f"Could not read rustfmt output: {type(exc).__name__}"
     else:
         return code, f"Formatter '{executable}' requires explicit file/project context; not run"
 
