@@ -134,3 +134,9 @@ Semgrep has substantially deeper static-analysis capabilities; Ruff has much bro
 
 ### Evidence and limitations
 Make validator availability explicit per language, retain exact tool versions and exit codes, and test both safe and invalid source samples. Heuristic scores are prioritization signals, not calibrated code-quality or security measurements. Preserve the default preview-only behavior and never apply a repair when validation is unavailable or fails. This is a scope comparison, not a defect-detection benchmark.
+
+---
+
+## Repository navigation
+
+[Alphabetical file index](FILE_INDEX.md)
