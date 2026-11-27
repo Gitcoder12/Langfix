@@ -73,6 +73,8 @@ def validate_code(code: str, language: str, timeout: int = 10) -> dict:
         source = Path(tmp) / f"input{suffix}"
         source.write_text(code, encoding="utf-8")
         command = list(validator)
+        if language == "rust" and "--edition" not in command:
+            command += ["--edition", "2021"]
         if language in {"java", "c", "cpp", "swift"}:
             command.append(str(source))
         elif language == "kotlin":
@@ -97,22 +99,47 @@ def _safe_cleanup(code: str) -> str:
 
 
 def _format_with_tool(code: str, language: str, timeout: int) -> tuple[str, str | None]:
+    """Format validated source through a supported stdin/stdout or temp-file adapter."""
     formatter = LANGUAGE_RULES[language].get("formatter")
     if not formatter:
         return code, "No external formatter configured"
     executable = formatter[0]
     if not shutil.which(executable):
         return code, f"Optional formatter '{executable}' is not installed"
+
     if executable == "black":
         command = ["black", "--quiet", "-"]
+        try:
+            result = _run(command, input_text=code, timeout=timeout)
+        except subprocess.TimeoutExpired:
+            return code, f"Formatter exceeded {timeout}s"
     elif executable == "prettier":
         command = ["prettier", "--parser", formatter[2]]
+        try:
+            result = _run(command, input_text=code, timeout=timeout)
+        except subprocess.TimeoutExpired:
+            return code, f"Formatter exceeded {timeout}s"
+    elif executable == "rustfmt":
+        # rustfmt expects a file path for stable edition-aware formatting.
+        # Use a temporary file and stdout output so the target is never modified.
+        with tempfile.TemporaryDirectory(prefix="langfix-rustfmt-") as tmp:
+            source = Path(tmp) / "input.rs"
+            source.write_text(code, encoding="utf-8")
+            command = [
+                "rustfmt",
+                "--emit",
+                "stdout",
+                "--edition",
+                "2021",
+                str(source),
+            ]
+            try:
+                result = _run(command, timeout=timeout)
+            except subprocess.TimeoutExpired:
+                return code, f"Formatter exceeded {timeout}s"
     else:
         return code, f"Formatter '{executable}' requires explicit file/project context; not run"
-    try:
-        result = _run(command, input_text=code, timeout=timeout)
-    except subprocess.TimeoutExpired:
-        return code, f"Formatter exceeded {timeout}s"
+
     if result.returncode:
         return code, (result.stderr or result.stdout).strip()[:1000] or "Formatter failed"
     return result.stdout, None
