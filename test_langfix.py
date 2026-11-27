@@ -1,6 +1,8 @@
 """Regression tests for detection, validation and conservative repair."""
 import tempfile
+import shutil
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 from detector import detect_language
@@ -67,6 +69,52 @@ class TestLangfixPolyglot(unittest.TestCase):
             applied = fix_file(path, apply=True)
             self.assertTrue(applied["written"])
             self.assertEqual(path.read_text(encoding="utf-8"), "value = 1\n")
+
+
+    def test_rust_is_detected_by_extension_and_signature(self):
+        self.assertEqual(detect_language("fn main() { println!(\"hello\"); }", "main.rs").language, "rust")
+        self.assertEqual(detect_language("fn main() { println!(\"hello\"); }").language, "rust")
+
+    def test_rust_validator_fails_closed_when_rustfmt_is_missing(self):
+        with patch("fixer.shutil.which", return_value=None):
+            result = validate_code("fn main() {}", "rust")
+        self.assertEqual(result["status"], "skipped")
+        self.assertIsNone(result["valid"])
+        self.assertIn("not installed", result["message"])
+
+    @unittest.skipUnless(shutil.which("rustfmt"), "rustfmt is installed in the Rust-enabled CI job")
+    def test_rustfmt_validates_syntax_and_rejects_invalid_rust(self):
+        valid = validate_code('fn main() { println!("hello"); }', "rust")
+        invalid = validate_code("fn main( {", "rust")
+        self.assertEqual(valid["status"], "passed")
+        self.assertTrue(valid["valid"])
+        self.assertEqual(invalid["status"], "failed")
+        self.assertFalse(invalid["valid"])
+
+    @unittest.skipUnless(shutil.which("rustfmt"), "rustfmt is installed in the Rust-enabled CI job")
+    def test_rustfmt_formats_valid_rust_without_typechecking_claims(self):
+        messy = 'fn main(){println!("hello");}'
+        result = fix_code(messy, "rust", use_formatter=True)
+        self.assertTrue(result["validation_before"]["valid"])
+        self.assertTrue(result["validation_after"]["valid"])
+        self.assertTrue(result["changed"])
+        self.assertIn('    println!("hello");', result["fixed"])
+        self.assertIsNone(result["formatter_note"])
+
+    @unittest.skipUnless(shutil.which("rustfmt"), "rustfmt is installed in the Rust-enabled CI job")
+    def test_rust_file_repair_requires_explicit_apply(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "main.rs"
+            original = 'fn main(){println!("hello");}   '
+            path.write_text(original, encoding="utf-8")
+            preview = fix_file(path, use_formatter=True)
+            self.assertTrue(preview["changed"])
+            self.assertFalse(preview["written"])
+            self.assertEqual(path.read_text(encoding="utf-8"), original)
+            applied = fix_file(path, use_formatter=True, apply=True)
+            self.assertTrue(applied["written"])
+            self.assertTrue(applied["validation_after"]["valid"])
+            self.assertNotEqual(path.read_text(encoding="utf-8"), original)
 
 
 if __name__ == "__main__":
