@@ -28,10 +28,10 @@ python -m unittest -v test_langfix.py test_demo.py
 | External validation | Optional local tools for JavaScript, TypeScript, Java, C/C++, Go, Rust, Ruby, PHP, Bash, Kotlin, and Swift |
 | Findings | Trailing whitespace, final newline, and configured heuristic patterns |
 | Python analysis | Radon complexity and function/class docstring checks |
-| Formatting | Black and Prettier when installed and source validation passes |
+| Formatting | Black, Prettier, and rustfmt when installed and source validation passes |
 | Reports | Terminal, JSON, and SARIF |
 
-A registered language is not a promise of a built-in parser. External validation is reported as skipped when its tool is unavailable. HTML, CSS, and SQL currently have no syntax validator configured. Tree-sitter metadata is not an implemented parser integration.
+Rust validation uses rustfmt to parse source syntax when installed; this is not Cargo type-checking, dependency resolution, or test execution. Rust formatting runs against a temporary file and returns a preview, so the target file is not passed to rustfmt for in-place mutation. A registered language is not a promise of a built-in parser. External validation is reported as skipped when its tool is unavailable. HTML, CSS, and SQL currently have no syntax validator configured. Tree-sitter metadata is not an implemented parser integration.
 
 ## Requirements
 
