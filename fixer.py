@@ -4,6 +4,7 @@ from __future__ import annotations
 import ast
 import difflib
 import json
+import math
 import os
 import shutil
 import subprocess
@@ -14,8 +15,8 @@ from lang_registry import LANGUAGE_RULES
 
 
 def _run(command: list[str], *, input_text: str | None = None, timeout: int = 10) -> subprocess.CompletedProcess:
-    if timeout <= 0:
-        raise ValueError("timeout must be greater than zero")
+    if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or not math.isfinite(timeout) or timeout <= 0:
+        raise ValueError("timeout must be a finite positive number")
     return subprocess.run(command, input=input_text, capture_output=True, text=True, timeout=timeout, check=False)
 
 
@@ -29,11 +30,15 @@ def _module_available(name: str) -> bool:
 
 def validate_code(code: str, language: str, timeout: int = 10) -> dict:
     """Validate syntax only where an available validator can do so reliably."""
-    language = language.lower()
+    if not isinstance(code, str):
+        raise TypeError("code must be a string")
+    if not isinstance(language, str):
+        raise TypeError("language must be a string")
+    language = language.lower().strip()
     if language not in LANGUAGE_RULES:
         return {"status": "unsupported", "valid": None, "message": f"Unsupported language: {language}"}
-    if timeout <= 0:
-        raise ValueError("timeout must be greater than zero")
+    if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or timeout <= 0:
+        raise ValueError("timeout must be a finite positive number")
 
     if language == "python":
         try:
@@ -61,23 +66,24 @@ def validate_code(code: str, language: str, timeout: int = 10) -> dict:
 
     validator = LANGUAGE_RULES[language]["validator"]
     if not validator:
-        return {"status": "skipped", "valid": None, "message": "No syntax validator configured"}
+        return {"status": "skipped", "valid": None, "message": "No safe syntax validator configured"}
     if isinstance(validator, str):
         return {"status": "skipped", "valid": None, "message": f"Validator '{validator}' is not implemented"}
     executable = validator[0]
     if not shutil.which(executable):
         return {"status": "skipped", "valid": None, "message": f"Optional validator '{executable}' is not installed"}
 
-    suffix = LANGUAGE_RULES[language]["extensions"][0]
     with tempfile.TemporaryDirectory(prefix="langfix-") as tmp:
-        source = Path(tmp) / f"input{suffix}"
+        source = Path(tmp) / f"input{LANGUAGE_RULES[language]['extensions'][0]}"
         source.write_text(code, encoding="utf-8")
-        command = list(validator)
-        if language in {"java", "c", "cpp", "swift"}:
-            command.append(str(source))
-        elif language == "kotlin":
-            command += [str(source), "-d", str(Path(tmp) / "out.jar")]
-        elif language in {"javascript", "typescript", "go", "rust", "ruby", "php", "shell"}:
+        command = [
+            part.replace("{file}", str(source)).replace("{tmp}", tmp)
+            for part in validator
+        ]
+        if "{file}" not in " ".join(validator) and language in {
+            "java", "c", "cpp", "swift", "kotlin", "javascript", "typescript",
+            "go", "rust", "ruby", "php", "shell",
+        }:
             command.append(str(source))
         try:
             result = _run(command, timeout=timeout)
@@ -122,7 +128,7 @@ def scan_code(code: str, language: str, timeout: int = 10) -> dict:
     """Report syntax, whitespace and configured heuristic findings."""
     import re
 
-    language = language.lower()
+    language = language.lower().strip()
     if language not in LANGUAGE_RULES:
         raise ValueError(f"Unsupported language: {language}")
     syntax = validate_code(code, language, timeout)
@@ -143,29 +149,25 @@ def scan_code(code: str, language: str, timeout: int = 10) -> dict:
 
 def fix_code(code: str, language: str, *, use_formatter: bool = False, timeout: int = 10) -> dict:
     """Propose a repair; unverifiable or invalid source is preserved unchanged."""
-    language = language.lower()
+    language = language.lower().strip()
     if language not in LANGUAGE_RULES:
         raise ValueError(f"Unsupported language: {language}")
     before_validation = validate_code(code, language, timeout)
     findings_before = scan_code(code, language, timeout)["findings"]
-
     can_transform = before_validation["valid"] is True
     candidate = code
     formatter_note = None
-    # Trimming shell whitespace can turn an escaped space into a line continuation.
-    if can_transform and language != "shell":
+    if can_transform and language not in {"shell"}:
         candidate = _safe_cleanup(code)
     if use_formatter and can_transform:
         candidate, formatter_note = _format_with_tool(candidate, language, timeout)
         if language != "shell":
             candidate = _safe_cleanup(candidate)
-
     after_validation = validate_code(candidate, language, timeout)
     if can_transform and after_validation["valid"] is not True:
         candidate = code
         after_validation = before_validation
         formatter_note = "Candidate rejected: validation regressed; original source preserved"
-
     diff = "".join(difflib.unified_diff(code.splitlines(keepends=True), candidate.splitlines(keepends=True), fromfile="original", tofile="fixed"))
     return {
         "language": language, "original": code, "fixed": candidate,
@@ -179,7 +181,6 @@ def fix_file(path: str | os.PathLike, *, use_formatter: bool = False, apply: boo
     """Fix a source file; writing occurs only when apply=True."""
     file_path = Path(path)
     from detector import detect_language
-
     original = file_path.read_text(encoding="utf-8")
     detection = detect_language(original, str(file_path))
     if not detection.language:
